@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ncrypt</title>
+    <script
+      src="https://unpkg.com/htmx.org@1.9.10"
+      integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <h1>Hello World</h1>
+
+    <!-- Encryption Form -->
+    <form
+      hx-post="/encrypt"
+      hx-target="#download-link"
+      enctype="multipart/form-data"
+    >
+      <label for="file">Upload file</label>
+      <input type="file" name="file" /><br />
+      <label for="filename">Upload filename</label>
+      <input type="text" name="filename" /><br />
+      <label for="passphrase">Passphrase</label>
+      <input type="password" name="passphrase" /><br />
+      <button type="submit">Encrypt</button>
+    </form>
+    <!-- Download Link -->
+    <div id="download-link"></div>
+
+    <hr />
+  </body>
+</html>
