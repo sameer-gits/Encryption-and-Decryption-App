@@ -5,10 +5,14 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
+
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -81,6 +85,16 @@ func decrypt(data []byte, passphrase string) ([]byte, error) {
 	return plaintext, nil
 }
 
+// func getDatabaseURL() string {
+// 	// Construct and return the database URL
+// 	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s",
+// 		os.Getenv("DB_USER"),
+// 		os.Getenv("DB_PASSWORD"),
+// 		os.Getenv("DB_HOST"),
+// 		os.Getenv("DB_PORT"),
+// 		os.Getenv("DB_NAME"))
+// }
+
 func encryptFile(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20) // Limit size to 10MB
 	file, _, err := r.FormFile("file")
@@ -104,14 +118,77 @@ func encryptFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := userFilename + ".enc"
-	if err := os.WriteFile(filename, encryptedData, 0644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
-	downloadLink := "<a href=\"/download?filename=" + filename + "\">Download Encrypted File</a>"
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, "%s", downloadLink)
+	db, err := sql.Open("postgres", "postgresql://postgres:fd3aAddCg--b2FCDC6*D6gA-Fdd63-*a@viaduct.proxy.rlwy.net:19978/railway")
+
+	if err != nil {
+        log.Fatal(err)
+    }
+
+	defer db.Close()
+
+// 	insertstmt, err := db.Prepare("INSERT INTO encrypted_files (filename, data) VALUES ($1, $2) RETURNING id")
+
+// if err != nil {
+//     log.Fatal(err)
+// }
+
+// defer insertstmt.Close()
+
+// // Execute the INSERT statement
+// var fileid interface{} // Define a variable to store the returned ID
+// err = insertstmt.QueryRow(filename, encryptedData).Scan(&fileid) // Scan the returned ID into fileid
+
+// if err != nil {
+//     log.Fatal(err)
+// }
+
+// downloadstmt, err := db.Prepare("SELECT id FROM encrypted_files WHERE id = $1")
+
+// if err != nil {
+//     log.Fatal(err)
+// }
+
+// defer downloadstmt.Close()
+
+// var fileidStr string
+// switch fileid := fileid.(type) {
+// case int:
+//     fileidStr = strconv.Itoa(fileid)
+// case string:
+//     fileidStr = fileid
+// default:
+//     log.Fatal("Unexpected type for fileid")
+// }
+
+// downloadLink := "<a href=\"/download?filename=" + fileidStr + "\">Download Encrypted File</a>"
+// w.Header().Set("Content-Type", "text/html")
+// fmt.Fprintf(w, "%s", downloadLink)
+
+insertstmt, err := db.Prepare("INSERT INTO encrypted_files (filename, data) VALUES ($1, $2) RETURNING id")
+
+if err != nil {
+    log.Fatal(err)
+}
+
+defer insertstmt.Close()
+
+// Execute the INSERT statement
+var fileid int // Define a variable to store the returned ID
+err = insertstmt.QueryRow(filename, encryptedData).Scan(&fileid) // Scan the returned ID into fileid
+
+if err != nil {
+    log.Fatal(err)
+}
+
+if err := os.WriteFile(filename, encryptedData, 0644); err != nil {
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+downloadLink := "<a href=\"/download?filename=" + filename + "\">Download Encrypted File</a>"
+w.Header().Set("Content-Type", "text/html")
+fmt.Fprintf(w, "%s", downloadLink)
+
 }
 
 func decryptFile(w http.ResponseWriter, r *http.Request) {
@@ -177,6 +254,8 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filename)
 }
 
+
+
 func main() {
 	http.HandleFunc("/encrypt", encryptFile)
 	http.HandleFunc("/decrypt", decryptFile)
@@ -185,3 +264,5 @@ func main() {
 
 	http.ListenAndServe(":8080", nil)
 }
+
+
