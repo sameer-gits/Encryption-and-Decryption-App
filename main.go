@@ -27,6 +27,56 @@ func encrypt(data []byte, passphrase string) []byte {
 }
 
 
+func decrypt(data []byte, passphrase string) []byte {
+	key := []byte(createHash(passphrase))
+	block, _ := aes.NewCipher(key)
+	gcm, _ := cipher.NewGCM((block))
+	nonceSize := gcm.NonceSize()
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, _ := gcm.Open (nil, nonce, ciphertext, nil)
+	return plaintext
+}
+
+
+func decryptFile(w http.ResponseWriter, r *http.Request) {
+    // Parse the form file
+    r.ParseMultipartForm(10 << 20) // Limit size to 10MB
+    file, _, err := r.FormFile("fileDecrypt")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    defer file.Close()
+
+    // Read the file content
+    fileBytes, err := io.ReadAll(file)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    filenameDecrypt := r.Form.Get("filenameDecrypt")
+    passphraseDecrypt := r.Form.Get("passphraseDecrypt")
+   
+
+    // Encrypt the file content
+    decryptedData := decrypt(fileBytes, passphraseDecrypt)
+
+    // Save the encrypted data to a file for download
+    err = os.WriteFile(filenameDecrypt, decryptedData, 0644)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Generate download link
+    downloadLink := "<a href=\"/download?filename="+filenameDecrypt+"\">Download Decrypted File</a>"
+
+    // Write the link to the response
+    w.Header().Set("Content-Type", "text/html")
+    fmt.Fprintf(w, "%s", downloadLink)
+}
+
+
 func encryptFile(w http.ResponseWriter, r *http.Request) {
     // Parse the form file
     r.ParseMultipartForm(10 << 20) // Limit size to 10MB
@@ -80,7 +130,8 @@ func downloadFile(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
-	http.HandleFunc("/encrypt", encryptFile)
+	http.HandleFunc("/decrypt", decryptFile)
+    http.HandleFunc("/encrypt", encryptFile)
 	http.HandleFunc("/download", downloadFile)
 	http.Handle("/", http.FileServer(http.Dir(".")))
     http.ListenAndServe(":8080", nil)

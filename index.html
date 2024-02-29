@@ -31,5 +31,16 @@
     <div id="download-link"></div>
 
     <hr />
-  </body>
+
+    <form hx-post="/decrypt" hx-target="#download-link-decrypt" enctype="multipart/form-data">
+      <label for="file">Upload file</label>
+      <input type="file" name="fileDecrypt" /><br />
+      <label for="filename">Upload filename</label>
+      <input type="text" name="filenameDecrypt" /><br />
+      <label for="passphrase">Passphrase</label>
+      <input type="password" name="passphraseDecrypt" /><br />
+      <button type="submit">Decrypt</button>
+    </form>
+    <!-- Download Link -->
+    <div id="download-link-decrypt"></div>
 </html>
