@@ -11,128 +11,177 @@ import (
 	"os"
 )
 
-func createHash(key string) []byte {
-    hasher := sha256.New()
-    hasher.Write([]byte(key))
-    return hasher.Sum(nil)
+const (
+	keySize       = 32 // AES-256 requires a 32-byte key
+	nonceSize     = 12 // 96 bits for AES-GCM
+	fileChunkSize = 8192
+)
+
+func generateKey(passphrase string) ([]byte, error) {
+	hasher := sha256.New()
+	if _, err := hasher.Write([]byte(passphrase)); err != nil {
+		return nil, fmt.Errorf("failed to write to hasher: %v", err)
+	}
+	key := hasher.Sum(nil)
+	return key[:keySize], nil
 }
 
-func encrypt(data []byte, passphrase string) []byte {
-    block, _ := aes.NewCipher([]byte(createHash(passphrase)))
-    gcm, _ := cipher.NewGCM(block)
-    nonce := make([]byte, gcm.NonceSize())
-    io.ReadFull(rand.Reader, nonce)
-    ciphertext := gcm.Seal(nonce, nonce, data, nil)
-    return ciphertext
+func encrypt(data []byte, passphrase string) ([]byte, error) {
+	key, err := generateKey(passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AES cipher: %v", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM mode: %v", err)
+	}
+
+	nonce := make([]byte, nonceSize)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %v", err)
+	}
+
+	ciphertext := gcm.Seal(nil, nonce, data, nil)
+	return append(nonce, ciphertext...), nil
 }
 
+func decrypt(data []byte, passphrase string) ([]byte, error) {
+	key, err := generateKey(passphrase)
+	if err != nil {
+		return nil, err
+	}
 
-func decrypt(data []byte, passphrase string) []byte {
-	key := []byte(createHash(passphrase))
-	block, _ := aes.NewCipher(key)
-	gcm, _ := cipher.NewGCM((block))
-	nonceSize := gcm.NonceSize()
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-	plaintext, _ := gcm.Open (nil, nonce, ciphertext, nil)
-	return plaintext
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AES cipher: %v", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GCM mode: %v", err)
+	}
+
+	if len(data) < nonceSize {
+		return nil, fmt.Errorf("ciphertext is too short")
+	}
+
+	nonce := data[:nonceSize]
+	ciphertext := data[nonceSize:]
+
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("decryption failed: %v", err)
+	}
+	return plaintext, nil
 }
-
-
-func decryptFile(w http.ResponseWriter, r *http.Request) {
-    // Parse the form file
-    r.ParseMultipartForm(10 << 20) // Limit size to 10MB
-    file, _, err := r.FormFile("fileDecrypt")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    defer file.Close()
-
-    // Read the file content
-    fileBytes, err := io.ReadAll(file)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    filenameDecrypt := r.Form.Get("filenameDecrypt")
-    passphraseDecrypt := r.Form.Get("passphraseDecrypt")
-   
-
-    // Encrypt the file content
-    decryptedData := decrypt(fileBytes, passphraseDecrypt)
-
-    // Save the encrypted data to a file for download
-    err = os.WriteFile(filenameDecrypt, decryptedData, 0644)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    // Generate download link
-    downloadLink := "<a href=\"/download?filename="+filenameDecrypt+"\">Download Decrypted File</a>"
-
-    // Write the link to the response
-    w.Header().Set("Content-Type", "text/html")
-    fmt.Fprintf(w, "%s", downloadLink)
-}
-
 
 func encryptFile(w http.ResponseWriter, r *http.Request) {
-    // Parse the form file
-    r.ParseMultipartForm(10 << 20) // Limit size to 10MB
-    file, _, err := r.FormFile("file")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    defer file.Close()
+	r.ParseMultipartForm(10 << 20) // Limit size to 10MB
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
 
-    // Read the file content
-    fileBytes, err := io.ReadAll(file)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    filename := r.Form.Get("filename")
-    passphrase := r.Form.Get("passphrase")
+	plaintext, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+    userFilename := r.FormValue("filename")
+	passphrase := r.FormValue("passphrase")
+	encryptedData, err := encrypt(plaintext, passphrase)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Encrypt the file content
-    encryptedData := encrypt(fileBytes, passphrase)
+	filename := userFilename + ".enc"
+	if err := os.WriteFile(filename, encryptedData, 0644); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-    // Save the encrypted data to a file for download
-    err = os.WriteFile(filename+".enc", encryptedData, 0644)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-
-    // Generate download link
-    downloadLink := "<a href=\"/download?filename=" + filename + ".enc\">Download Encrypted File</a>"
-
-    // Write the link to the response
-    w.Header().Set("Content-Type", "text/html")
-    fmt.Fprintf(w, "%s", downloadLink)
+	downloadLink := "<a href=\"/download?filename=" + filename + "\">Download Encrypted File</a>"
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, "%s", downloadLink)
 }
-	
+
+func decryptFile(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(10 << 20) // Limit size to 10MB
+	file, _, err := r.FormFile("fileDecrypt")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	ciphertext, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	passphrase := r.FormValue("passphraseDecrypt")
+	plaintext, err := decrypt(ciphertext, passphrase)
+	if err != nil {
+		// If decryption fails, remove the existing decrypted file if it exists
+		filename := r.FormValue("filenameDecrypt")
+		if _, statErr := os.Stat(filename); statErr == nil {
+			removeErr := os.Remove(filename)
+			if removeErr != nil {
+				http.Error(w, removeErr.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		// Return the noLink HTML
+		noLink := "<div id=\"download-link-decrypt\"></div>"
+		w.Header().Set("Content-Type", "text/html") // Set the content type before writing response
+		fmt.Fprintf(w, "%s", noLink)                // Write the HTML response
+		return                                       // Exit the function after writing the response
+	}
+
+	// Decryption successful, write the decrypted file and provide download link
+	filename := r.FormValue("filenameDecrypt")
+	if err := os.WriteFile(filename, plaintext, 0644); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	downloadLink := "<a href=\"/download?filename=" + filename + "\">Download Decrypted File</a>"
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, "%s", downloadLink)
+}
 
 func downloadFile(w http.ResponseWriter, r *http.Request) {
-    // Extract the filename from the query parameters
-    filename := r.URL.Query().Get("filename")
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		http.Error(w, "Filename not provided", http.StatusBadRequest)
+		return
+	}
 
-    // Set the appropriate headers for file download
-    w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-    w.Header().Set("Content-Type", "application/octet-stream")
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		http.Error(w, "File not found", http.StatusNotFound)
+		return
+	}
 
-    // Serve the file
-    http.ServeFile(w, r, filename)
+	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeFile(w, r, filename)
 }
 
-
-
 func main() {
+	http.HandleFunc("/encrypt", encryptFile)
 	http.HandleFunc("/decrypt", decryptFile)
-    http.HandleFunc("/encrypt", encryptFile)
 	http.HandleFunc("/download", downloadFile)
 	http.Handle("/", http.FileServer(http.Dir(".")))
-    http.ListenAndServe(":8080", nil)
+
+	http.ListenAndServe(":8080", nil)
 }
