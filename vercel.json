@@ -1,4 +1,4 @@
 {
   "version": 2,
-  "builds": [{ "src": ".", "use": "@vercel/go" }]
+  "builds": [{ "src": "./", "use": "@vercel/go" }]
 }
