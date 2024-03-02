@@ -199,7 +199,7 @@ func decryptFile(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		}
 
 		// Return the noLink HTML
-		noLink := fmt.Sprintf("<div id=\"download-link-decrypt\">Please check password! or \n Error: %v</div>", err)
+		noLink := "<div id=\"download-link-decrypt\">Please check password!</div>"
 		w.Header().Set("Content-Type", "text/html") // Set the content type before writing response
 		fmt.Fprintf(w, "%s", noLink)                // Write the HTML response
 		return                                       // Exit the function after writing the response

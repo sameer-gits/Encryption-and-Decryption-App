@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ncrypt</title>
+    <title>Ncrypt - File Encryption and Decryption</title>
     <script
       src="https://unpkg.com/htmx.org@1.9.10"
       integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
@@ -18,12 +18,13 @@
     </h1>
     <p class="mb-4 text-balance text-center">
       Both Encrypted and Decrypted files are stored in the database (Railway app
-      Postgres), so it is just a demo.
+      Postgres).
     </p>
-    <div class="flex flex-col md:flex-row gap-4">
-      <div class="p-4 md:p-8 border grow bg-white">
+    <div class="flex flex-row h-full flex-wrap gap-4">
+      <div class="p-4 md:p-8 border h-full grow bg-white">
         <!-- Encryption Form -->
         <form
+          class="mb-4 md:mb-8"
           hx-post="/encrypt"
           hx-target="#download-link"
           enctype="multipart/form-data"
@@ -69,11 +70,12 @@
           </button>
         </form>
         <!-- Download Link -->
-        <div class="mt-8" id="download-link" class="mb-8"></div>
+        <div id="download-link"></div>
       </div>
 
-      <div class="p-4 md:p-8 border grow bg-white">
+      <div class="p-4 md:p-8 border [max-width: 50%;] grow bg-white">
         <form
+          class="mb-4 md:mb-8"
           hx-post="/decrypt"
           hx-target="#download-link-decrypt"
           enctype="multipart/form-data"
@@ -123,7 +125,7 @@
           </button>
         </form>
         <!-- Download Link -->
-        <div class="mt-8" id="download-link-decrypt"></div>
+        <div id="download-link-decrypt"></div>
       </div>
     </div>
   </body>
