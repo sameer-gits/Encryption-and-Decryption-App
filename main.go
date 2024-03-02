@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -251,48 +252,51 @@ func downloadDecrypt(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 func main() {
-	// Load environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+    // Load environment variables
+    err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file:", err)
+    }
 
-	// Retrieve DATABASE_URL from environment variables
-	DATABASE_URL := os.Getenv("DATABASE_URL")
+    // Retrieve DATABASE_URL from environment variables
+    DATABASE_URL := os.Getenv("DATABASE_URL")
 
-	// Open database connection
-	db, err := sql.Open("postgres", DATABASE_URL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close() // Close database connection when main function exits
+    // Open database connection
+    db, err := sql.Open("postgres", DATABASE_URL)
+    if err != nil {
+        log.Fatal("Error connecting to database:", err)
+    }
+    defer db.Close() // Close database connection when main function exits
 
-	// Print connection message
-	fmt.Println("db connected.")
+    // Print connection message
+    fmt.Println("Database connected.")
 
-	// Define HTTP handlers
-	http.HandleFunc("/encrypt", func(w http.ResponseWriter, r *http.Request) {
-		encryptFile(w, r, db)
-	})
+    // Define HTTP handlers
+    http.HandleFunc("/encrypt", func(w http.ResponseWriter, r *http.Request) {
+        encryptFile(w, r, db)
+    })
 
-	http.HandleFunc("/downloadencrypt", func(w http.ResponseWriter, r *http.Request) {
-		downloadEncrypt(w, r, db)
-	})
+    http.HandleFunc("/downloadencrypt", func(w http.ResponseWriter, r *http.Request) {
+        downloadEncrypt(w, r, db)
+    })
 
-	 http.HandleFunc("/decrypt", func(w http.ResponseWriter, r *http.Request) {
-		decryptFile(w, r, db)
-	})
+    http.HandleFunc("/decrypt", func(w http.ResponseWriter, r *http.Request) {
+        decryptFile(w, r, db)
+    })
+
     http.HandleFunc("/downloaddecrypt", func(w http.ResponseWriter, r *http.Request) {
-		downloadDecrypt(w, r, db)
-	})
+        downloadDecrypt(w, r, db)
+    })
 
+    // Serve static files from the current directory
+    http.Handle("/", http.FileServer(http.Dir(".")))
 
-	// Serve static files from the current directory
-	http.Handle("/", http.FileServer(http.Dir(".")))
-
-	// Start HTTP server
-	err = http.ListenAndServe(":3000", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+    // Start HTTP server
+    server := &http.Server{
+        Addr:         ":3000",
+        ReadTimeout:  10 * time.Second,
+        WriteTimeout: 10 * time.Second,
+        IdleTimeout:  120 * time.Second,
+    }
+    log.Fatal(server.ListenAndServe())
 }
