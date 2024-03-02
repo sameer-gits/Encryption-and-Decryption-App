@@ -9,38 +9,122 @@
       integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
       crossorigin="anonymous"
     ></script>
+    <!-- Add Tailwind CSS -->
+    <link href="./output.css" rel="stylesheet" />
   </head>
-  <body>
-    <h1>Hello World</h1>
+  <body class="bg-gray-100 p-4 md:p-8 max-w-screen-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4 text-center">
+      Encrypt and Decrypt file
+    </h1>
+    <p class="mb-4 text-balance text-center">
+      Both Encrypted and Decrypted files are stored in the database (Railway app
+      Postgres), so it is just a demo.
+    </p>
+    <div class="flex flex-col md:flex-row gap-4">
+      <div class="p-4 md:p-8 border grow bg-white">
+        <!-- Encryption Form -->
+        <form
+          hx-post="/encrypt"
+          hx-target="#download-link"
+          enctype="multipart/form-data"
+        >
+          <div class="mb-4">
+            <label for="file" class="block text-gray-700 font-bold mb-2"
+              >Upload file</label
+            >
+            <input
+              required
+              type="file"
+              name="file"
+              class="border bg-white border-blue-100 rounded-xl block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          <div class="mb-4">
+            <label for="filename" class="block text-gray-700 font-bold mb-2"
+              >Give filename</label
+            >
+            <input
+              required
+              type="text"
+              name="filename"
+              class="border rounded-lg py-2 px-3 w-full"
+            />
+          </div>
+          <div class="mb-4">
+            <label for="passphrase" class="block text-gray-700 font-bold mb-2"
+              >Password</label
+            >
+            <input
+              required
+              type="password"
+              name="passphrase"
+              class="border rounded-lg py-2 px-3 w-full"
+            />
+          </div>
+          <button
+            type="submit"
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Encrypt
+          </button>
+        </form>
+        <!-- Download Link -->
+        <div class="mt-8" id="download-link" class="mb-8"></div>
+      </div>
 
-    <!-- Encryption Form -->
-    <form
-      hx-post="/encrypt"
-      hx-target="#download-link"
-      enctype="multipart/form-data"
-    >
-      <label for="file">Upload file</label>
-      <input type="file" name="file" /><br />
-      <label for="filename">Give filename</label>
-      <input type="text" name="filename" /><br />
-      <label for="passphrase">Password</label>
-      <input type="password" name="passphrase" /><br />
-      <button type="submit">Encrypt</button>
-    </form>
-    <!-- Download Link -->
-    <div id="download-link"></div>
-
-    <hr />
-
-    <form hx-post="/decrypt" hx-target="#download-link-decrypt" enctype="multipart/form-data">
-      <label for="file">Upload Encrypted File</label>
-      <input type="file" name="fileDecrypt" /><br />
-      <label for="filename">Give filename with Extension</label>
-      <input type="text" name="filenameDecrypt"/><br />
-      <label for="passphrase">Password</label>
-      <input type="password" name="passphraseDecrypt" /><br />
-      <button type="submit">Decrypt</button>
-    </form>
-    <!-- Download Link -->
-    <div id="download-link-decrypt"></div>
+      <div class="p-4 md:p-8 border grow bg-white">
+        <form
+          hx-post="/decrypt"
+          hx-target="#download-link-decrypt"
+          enctype="multipart/form-data"
+        >
+          <div class="mb-4">
+            <label for="fileDecrypt" class="block text-gray-700 font-bold mb-2"
+              >Upload Encrypted File</label
+            >
+            <input
+              required
+              type="file"
+              name="fileDecrypt"
+              class="border bg-white border-blue-100 rounded-xl block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+          </div>
+          <div class="mb-4">
+            <label
+              for="filenameDecrypt"
+              class="block text-gray-700 font-bold mb-2"
+              >Give filename with Extension</label
+            >
+            <input
+              required
+              type="text"
+              name="filenameDecrypt"
+              class="border rounded-lg py-2 px-3 w-full"
+            />
+          </div>
+          <div class="mb-4">
+            <label
+              for="passphraseDecrypt"
+              class="block text-gray-700 font-bold mb-2"
+              >Password</label
+            >
+            <input
+              required
+              type="password"
+              name="passphraseDecrypt"
+              class="border rounded-lg py-2 px-3 w-full"
+            />
+          </div>
+          <button
+            type="submit"
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Decrypt
+          </button>
+        </form>
+        <!-- Download Link -->
+        <div class="mt-8" id="download-link-decrypt"></div>
+      </div>
+    </div>
+  </body>
 </html>
