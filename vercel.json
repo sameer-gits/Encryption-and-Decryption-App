@@ -1,4 +1,4 @@
 {
   "version": 2,
-  "builds": [{ "src": "go", "use": "./" }]
+  "builds": [{ "src": "go", "use": "./go" }]
 }
